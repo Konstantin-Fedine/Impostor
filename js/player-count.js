@@ -4,6 +4,8 @@ const screenTrack = document.getElementById("screen-track");
 const playersOption = document.getElementById("players-option");
 const playersBack = document.getElementById("players-back");
 const playerList = document.getElementById("player-list");
+const playerListScroll = document.getElementById("player-list-scroll");
+const activePlayerCount = document.getElementById("active-player-count");
 const playerCountValue = document.getElementById("player-count-value");
 const addPlayerForm = document.getElementById("add-player-form");
 const newPlayerName = document.getElementById("new-player-name");
@@ -12,6 +14,7 @@ const addPlayerButton = document.getElementById("add-player-button");
 const playerScreen = document.querySelector(".player-screen");
 const homeScreen = document.querySelector(".home-screen");
 const playerFormMessage = document.getElementById("player-form-message");
+const minPlayerCount = 3;
 const maxPlayerCount = 20;
 
 function getStoredPlayerNames() {
@@ -30,7 +33,12 @@ function getStoredPlayerNames() {
 
   try {
     const names = JSON.parse(storedNames);
-    if (!Array.isArray(names) || names.length === 0 || names.some(name => typeof name !== "string")) {
+    if (
+      !Array.isArray(names) ||
+      names.length < minPlayerCount ||
+      names.length > maxPlayerCount ||
+      names.some(name => typeof name !== "string")
+    ) {
       throw new Error("Ungültige Spielernamen gespeichert.");
     }
     return names;
@@ -43,11 +51,21 @@ function getStoredPlayerNames() {
 let playerNames = getStoredPlayerNames();
 let selectedPlayerIndex = null;
 let draggedItem = null;
+let dragPlaceholder = null;
+let draggedRow = null;
 let dragStartY = 0;
-let lastPointerY = 0;
+let dragPointerOffset = 0;
+let dragStartLeft = 0;
+let dragWidth = 0;
+let dragHeight = 0;
+let dragBorderRadii = null;
+let dragActive = false;
+let dragPointerY = 0;
+let dragDirection = 1;
+let dragAutoScrollFrame = null;
 let dragMoved = false;
 
-function setAddPlayerButtonState(isEditing) {
+function setAddPlayerButtonState(isEditing, animate = false) {
   addPlayerButton.setAttribute(
     "aria-label",
     isEditing ? "Spielername speichern" : "Spieler hinzufügen"
@@ -62,18 +80,66 @@ function setAddPlayerButtonState(isEditing) {
         <path d="M20 6 9 17l-5-5"/>
       </svg>
     `;
+  } else {
+    addPlayerButton.innerHTML = `
+      <svg class="button-icon plus-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+        viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+        aria-hidden="true">
+        <path d="M5 12h14"/>
+        <path d="M12 5v14"/>
+      </svg>
+    `;
+  }
+
+  const icon = addPlayerButton.querySelector("svg");
+  if (animate && icon) {
+    icon.classList.add("is-transitioning");
+    icon.addEventListener(
+      "animationend",
+      () => icon.classList.remove("is-transitioning"),
+      { once: true }
+    );
+  }
+}
+
+function setDeleteButtonVisibility(isVisible, animate = false) {
+  const wasHidden = deletePlayerButton.hidden;
+  deletePlayerButton.classList.remove("is-entering", "is-exiting");
+
+  if (isVisible) {
+    deletePlayerButton.hidden = false;
+    if (animate && wasHidden) {
+      deletePlayerButton.classList.add("is-entering");
+    }
     return;
   }
 
-  addPlayerButton.innerHTML = `
-    <svg class="button-icon plus-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-      viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-      aria-hidden="true">
-      <path d="M5 12h14"/>
-      <path d="M12 5v14"/>
-    </svg>
-  `;
+  if (animate && !deletePlayerButton.hidden) {
+    deletePlayerButton.classList.add("is-exiting");
+    deletePlayerButton.addEventListener(
+      "animationend",
+      () => {
+        deletePlayerButton.hidden = true;
+        deletePlayerButton.classList.remove("is-exiting");
+      },
+      { once: true }
+    );
+  } else {
+    deletePlayerButton.hidden = true;
+  }
+}
+
+function updatePlayerFormState() {
+  const atMaximum = playerNames.length >= maxPlayerCount;
+  newPlayerName.disabled = atMaximum && selectedPlayerIndex === null;
+  addPlayerButton.disabled = atMaximum && selectedPlayerIndex === null;
+
+  if (atMaximum && selectedPlayerIndex === null) {
+    newPlayerName.placeholder = "Maximal 20 Spieler";
+  } else if (selectedPlayerIndex === null) {
+    newPlayerName.placeholder = "Neuer Spieler";
+  }
 }
 
 function savePlayerNames() {
@@ -93,7 +159,7 @@ function clearFormMessage() {
   playerFormMessage.textContent = "";
 }
 
-function clearPlayerSelection() {
+function clearPlayerSelection(animateAddIcon = false, animateDeleteButton = false) {
   selectedPlayerIndex = null;
   playerList.querySelectorAll(".player-row.is-selected").forEach(rowElement => {
     rowElement.classList.remove("is-selected");
@@ -101,15 +167,17 @@ function clearPlayerSelection() {
   newPlayerName.value = "";
   newPlayerName.placeholder = "Neuer Spieler";
   newPlayerName.classList.remove("selection-focus");
-  deletePlayerButton.hidden = true;
-  setAddPlayerButtonState(false);
+  setDeleteButtonVisibility(false, animateDeleteButton);
+  setAddPlayerButtonState(false, animateAddIcon);
   clearFormMessage();
 }
 
-function renderPlayers() {
+function renderPlayers(animateAddIcon = false, animateDeleteButton = false) {
   playerList.innerHTML = "";
   playerCountValue.textContent = playerNames.length;
-  clearPlayerSelection();
+  activePlayerCount.textContent = `${playerNames.length}/${maxPlayerCount}`;
+  clearPlayerSelection(animateAddIcon, animateDeleteButton);
+  updatePlayerFormState();
 
   playerNames.forEach((name, index) => {
     const item = document.createElement("div");
@@ -130,12 +198,38 @@ function renderPlayers() {
     menuButton.className = "player-menu-button";
     menuButton.type = "button";
     menuButton.setAttribute("aria-label", `${name} verschieben`);
-    menuButton.textContent = "☰";
+    menuButton.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+        stroke-linejoin="round" aria-hidden="true">
+        <circle cx="9" cy="12" r="1"/>
+        <circle cx="9" cy="5" r="1"/>
+        <circle cx="9" cy="19" r="1"/>
+        <circle cx="15" cy="12" r="1"/>
+        <circle cx="15" cy="5" r="1"/>
+        <circle cx="15" cy="19" r="1"/>
+      </svg>
+    `;
 
     menuButton.addEventListener("pointerdown", event => {
+      event.preventDefault();
       draggedItem = item;
       dragStartY = event.clientY;
-      lastPointerY = event.clientY;
+      dragPointerY = event.clientY;
+      dragDirection = 1;
+      const itemRect = item.getBoundingClientRect();
+      dragPointerOffset = event.clientY - itemRect.top;
+      dragStartLeft = itemRect.left;
+      dragWidth = itemRect.width;
+      dragHeight = itemRect.height;
+      draggedRow = item.querySelector(".player-row");
+      const rowStyle = getComputedStyle(draggedRow);
+      dragBorderRadii = {
+        topLeft: rowStyle.borderTopLeftRadius,
+        topRight: rowStyle.borderTopRightRadius,
+        bottomRight: rowStyle.borderBottomRightRadius,
+        bottomLeft: rowStyle.borderBottomLeftRadius
+      };
       dragMoved = false;
       menuButton.setPointerCapture(event.pointerId);
     });
@@ -157,6 +251,7 @@ function renderPlayers() {
     });
 
     function selectPlayer(playerIndex, selectedRow) {
+      const hadSelectedPlayer = selectedPlayerIndex !== null;
       playerList.querySelectorAll(".player-row.is-selected").forEach(rowElement => {
         rowElement.classList.remove("is-selected");
       });
@@ -166,8 +261,9 @@ function renderPlayers() {
       newPlayerName.placeholder = "Spieler umbenennen";
       newPlayerName.value = playerNames[playerIndex];
       newPlayerName.classList.add("selection-focus");
-      deletePlayerButton.hidden = false;
-      setAddPlayerButtonState(true);
+      setDeleteButtonVisibility(true, true);
+      setAddPlayerButtonState(true, !hadSelectedPlayer);
+      updatePlayerFormState();
       clearFormMessage();
       newPlayerName.focus();
       newPlayerName.select();
@@ -191,45 +287,136 @@ function renderPlayers() {
   });
 }
 
+function updateDraggedItemPosition() {
+  if (!draggedItem || !dragPlaceholder) {
+    return;
+  }
+
+  draggedItem.style.top = `${dragPointerY - dragPointerOffset}px`;
+  draggedItem.style.width = `${dragWidth}px`;
+  draggedItem.style.height = `${dragHeight}px`;
+  draggedItem.style.left = `${dragStartLeft}px`;
+
+  const items = [...playerList.querySelectorAll(".player-item")].filter(
+    item => item !== draggedItem
+  );
+  const previousPositions = new Map(
+    items.map(item => [item, item.getBoundingClientRect().top])
+  );
+  if (dragDirection > 0) {
+    const nextItem = dragPlaceholder.nextElementSibling;
+    const nextRect = nextItem?.getBoundingClientRect();
+    const shouldMoveDown =
+      nextItem &&
+      nextRect &&
+      dragPointerY >= nextRect.top + nextRect.height / 3;
+
+    if (shouldMoveDown) {
+      playerList.insertBefore(dragPlaceholder, nextItem.nextElementSibling);
+    }
+  } else {
+    const previousItem = dragPlaceholder.previousElementSibling;
+    const previousRect = previousItem?.getBoundingClientRect();
+    const shouldMoveUp =
+      previousItem &&
+      previousRect &&
+      dragPointerY <= previousRect.bottom - previousRect.height / 3;
+
+    if (shouldMoveUp) {
+      playerList.insertBefore(dragPlaceholder, previousItem);
+    }
+  }
+
+  if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    items.forEach(item => {
+      const offset = previousPositions.get(item) - item.getBoundingClientRect().top;
+      if (!offset) {
+        return;
+      }
+
+      item.style.transition = "none";
+      item.style.transform = `translateY(${offset}px)`;
+      requestAnimationFrame(() => {
+        item.style.transition = "";
+        item.style.transform = "";
+      });
+    });
+  }
+}
+
+function autoScrollDraggedList() {
+  if (!dragActive || !draggedItem) {
+    dragAutoScrollFrame = null;
+    return;
+  }
+
+  const listRect = playerListScroll.getBoundingClientRect();
+  const edgeDistance = 56;
+  const maxSpeed = 12;
+  let scrollDelta = 0;
+
+  if (dragPointerY < listRect.top + edgeDistance) {
+    const proximity = 1 - Math.max(0, dragPointerY - listRect.top) / edgeDistance;
+    scrollDelta = -Math.ceil(maxSpeed * proximity);
+  } else if (dragPointerY > listRect.bottom - edgeDistance) {
+    const proximity = 1 - Math.max(0, listRect.bottom - dragPointerY) / edgeDistance;
+    scrollDelta = Math.ceil(maxSpeed * proximity);
+  }
+
+  if (scrollDelta) {
+    const previousScrollTop = playerListScroll.scrollTop;
+    playerListScroll.scrollTop += scrollDelta;
+    if (playerListScroll.scrollTop !== previousScrollTop) {
+      updateDraggedItemPosition();
+    }
+  }
+
+  dragAutoScrollFrame = requestAnimationFrame(autoScrollDraggedList);
+}
+
 document.addEventListener("pointermove", event => {
   if (!draggedItem) {
     return;
   }
 
-  if (Math.abs(event.clientY - dragStartY) < 6) {
+  const previousPointerY = dragPointerY;
+  dragPointerY = event.clientY;
+  const pointerDelta = dragPointerY - previousPointerY;
+  if (pointerDelta) {
+    dragDirection = pointerDelta > 0 ? 1 : -1;
+  }
+  if (Math.abs(dragPointerY - dragStartY) < 6) {
     return;
   }
 
   event.preventDefault();
   dragMoved = true;
-  draggedItem.classList.add("is-dragging");
-
-  const movingDown = event.clientY > lastPointerY;
-  const items = [...playerList.querySelectorAll(".player-item")].filter(
-    item => item !== draggedItem
-  );
-
-  if (movingDown) {
-    const targetItem = items.reduce((lastItem, item) => {
-      const itemRect = item.getBoundingClientRect();
-      return event.clientY >= itemRect.top ? item : lastItem;
-    }, null);
-
-    if (targetItem) {
-      playerList.insertBefore(draggedItem, targetItem.nextElementSibling);
-    }
-  } else {
-    const targetItem = items.find(item => {
-      const itemRect = item.getBoundingClientRect();
-      return event.clientY <= itemRect.bottom;
-    });
-
-    if (targetItem) {
-      playerList.insertBefore(draggedItem, targetItem);
-    }
+  if (!dragActive) {
+    dragActive = true;
+    dragPlaceholder = document.createElement("div");
+    dragPlaceholder.className = "player-drag-placeholder";
+    dragPlaceholder.style.height = `${dragHeight}px`;
+    draggedItem.parentNode.insertBefore(dragPlaceholder, draggedItem);
+    document.body.append(draggedItem);
+    document.documentElement.classList.add("is-dragging-player");
+    draggedRow.style.borderTopLeftRadius = dragBorderRadii.topLeft;
+    draggedRow.style.borderTopRightRadius = dragBorderRadii.topRight;
+    draggedRow.style.borderBottomRightRadius = dragBorderRadii.bottomRight;
+    draggedRow.style.borderBottomLeftRadius = dragBorderRadii.bottomLeft;
+    dragAutoScrollFrame = requestAnimationFrame(autoScrollDraggedList);
   }
 
-  lastPointerY = event.clientY;
+  draggedItem.classList.add("is-dragging");
+  updateDraggedItemPosition();
+});
+
+let scrollIndicatorTimeout = null;
+playerListScroll.addEventListener("scroll", () => {
+  playerListScroll.classList.add("is-scrolling");
+  clearTimeout(scrollIndicatorTimeout);
+  scrollIndicatorTimeout = setTimeout(() => {
+    playerListScroll.classList.remove("is-scrolling");
+  }, 700);
 });
 
 document.addEventListener("pointerup", () => {
@@ -237,16 +424,45 @@ document.addEventListener("pointerup", () => {
     return;
   }
 
-  if (dragMoved) {
+  if (dragAutoScrollFrame) {
+    cancelAnimationFrame(dragAutoScrollFrame);
+    dragAutoScrollFrame = null;
+  }
+
+  if (dragActive && dragPlaceholder) {
+    dragPlaceholder.replaceWith(draggedItem);
     playerNames = [...playerList.querySelectorAll(".player-row")].map(
       playerRow => playerNames[Number(playerRow.dataset.playerIndex)]
     );
     savePlayerNames();
-    renderPlayers();
   }
 
+  if (dragActive) {
+    draggedItem.classList.remove("is-dragging");
+    draggedItem.style.removeProperty("width");
+    draggedItem.style.removeProperty("height");
+    draggedItem.style.removeProperty("left");
+    draggedItem.style.removeProperty("top");
+    draggedRow.style.removeProperty("border-top-left-radius");
+    draggedRow.style.removeProperty("border-top-right-radius");
+    draggedRow.style.removeProperty("border-bottom-right-radius");
+    draggedRow.style.removeProperty("border-bottom-left-radius");
+  }
+  if (dragPlaceholder) {
+    dragPlaceholder.remove();
+  }
+  document.documentElement.classList.remove("is-dragging-player");
+  if (dragActive) {
+    renderPlayers();
+  }
   draggedItem = null;
-  lastPointerY = 0;
+  dragPlaceholder = null;
+  draggedRow = null;
+  dragPointerOffset = 0;
+  dragBorderRadii = null;
+  dragActive = false;
+  dragPointerY = 0;
+  dragDirection = 1;
   dragMoved = false;
 });
 
@@ -255,9 +471,34 @@ document.addEventListener("pointercancel", () => {
     return;
   }
 
-  draggedItem.classList.remove("is-dragging");
+  if (dragAutoScrollFrame) {
+    cancelAnimationFrame(dragAutoScrollFrame);
+    dragAutoScrollFrame = null;
+  }
+
+  if (dragActive) {
+    draggedItem.classList.remove("is-dragging");
+    draggedItem.style.removeProperty("width");
+    draggedItem.style.removeProperty("height");
+    draggedItem.style.removeProperty("left");
+    draggedItem.style.removeProperty("top");
+    draggedRow.style.removeProperty("border-top-left-radius");
+    draggedRow.style.removeProperty("border-top-right-radius");
+    draggedRow.style.removeProperty("border-bottom-right-radius");
+    draggedRow.style.removeProperty("border-bottom-left-radius");
+    if (dragPlaceholder) {
+      dragPlaceholder.replaceWith(draggedItem);
+    }
+  }
+  document.documentElement.classList.remove("is-dragging-player");
   draggedItem = null;
-  lastPointerY = 0;
+  dragPlaceholder = null;
+  draggedRow = null;
+  dragPointerOffset = 0;
+  dragBorderRadii = null;
+  dragActive = false;
+  dragPointerY = 0;
+  dragDirection = 1;
   dragMoved = false;
 });
 
@@ -330,8 +571,9 @@ addPlayerForm.addEventListener("submit", event => {
     playerNames[selectedPlayerIndex] = name;
   }
 
+  const wasEditing = selectedPlayerIndex !== null;
   savePlayerNames();
-  renderPlayers();
+  renderPlayers(wasEditing);
   newPlayerName.focus();
 });
 
@@ -341,13 +583,16 @@ newPlayerName.addEventListener("keydown", () => {
 });
 
 deletePlayerButton.addEventListener("click", () => {
-  if (selectedPlayerIndex === null || playerNames.length === 1) {
+  if (selectedPlayerIndex === null || playerNames.length <= minPlayerCount) {
+    if (playerNames.length <= minPlayerCount) {
+      showFormMessage(`Mindestens ${minPlayerCount} Spieler sind erforderlich.`);
+    }
     return;
   }
 
   playerNames.splice(selectedPlayerIndex, 1);
   savePlayerNames();
-  renderPlayers();
+  renderPlayers(false, true);
   newPlayerName.focus();
 });
 
@@ -360,7 +605,8 @@ playerScreen.addEventListener("click", event => {
     return;
   }
 
-  clearPlayerSelection();
+  const hadSelectedPlayer = selectedPlayerIndex !== null;
+  clearPlayerSelection(hadSelectedPlayer, hadSelectedPlayer);
 });
 
 newPlayerName.placeholder = "Neuer Spieler";
