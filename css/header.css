@@ -1,0 +1,23 @@
+.header {
+  height: 64px;
+
+  background-color: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.inner-header {
+  height: 100%;
+  padding: 0 24px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logo {
+  color: white;
+  text-decoration: none;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.8px;
+}

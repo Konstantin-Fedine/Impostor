@@ -1,0 +1,70 @@
+:root {
+    /* Farben */
+    --bg: #181818;
+    --surface: #111111;
+    --surface-hover: #1d1d1d;
+    --surface-option-hover: #242424;
+    --border: #3a3a3a;
+
+    --text: #ffffff;
+    --text-muted: #a7a9ae;
+
+    /* Radius */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-full: 999px;
+
+    /* Abstände */
+    --space-xs: 4px;
+    --space-sm: 8px;
+    --space-md: 12px;
+    --space-lg: 16px;
+    --space-xl: 24px;
+    --space-2xl: 32px;
+    --space-3xl: 48px;
+    --space-4xl: 64px;
+
+    /* Größen */
+    --header-height: 64px;
+    --content-max-width: 1200px;
+
+    /* Übergänge */
+    --transition: 0.2s ease;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    font-family: "Inter", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+button,
+input,
+textarea,
+select {
+    font: inherit;
+}
+
+.container {
+  width: 100%;
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: var(--space-xl);
+}
