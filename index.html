@@ -39,15 +39,15 @@
 
           <div class="option-divider"></div>
 
-          <div class="option">
+          <button class="option" id="impostors-option" type="button">
             <span class="option-name">Impostor</span>
-            <span class="option-value">1</span>
+            <span class="option-value" id="impostor-count-value">1</span>
             <svg class="option-chevron" xmlns="http://www.w3.org/2000/svg" width="24" height="24"
               viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="m9 18 6-6-6-6"/>
             </svg>
-          </div>
+          </button>
 
           <div class="option-divider"></div>
 
@@ -61,15 +61,15 @@
 
           <div class="option-divider"></div>
 
-          <div class="option">
+          <button class="option" id="categories-option" type="button">
             <span class="option-name">Kategorien</span>
-            <span class="option-value">Alle</span>
+            <span class="option-value" id="category-count-value">Keine Kategorien</span>
             <svg class="option-chevron" xmlns="http://www.w3.org/2000/svg" width="24" height="24"
               viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="m9 18 6-6-6-6"/>
             </svg>
-          </div>
+          </button>
         </div>
 
         <button class="play-button" type="button">Spiel starten</button>
@@ -119,6 +119,39 @@
             </svg>
           </button>
         </form>
+      </section>
+
+      <section class="screen impostor-screen" aria-hidden="true" inert>
+        <button class="back-button" id="impostors-back" type="button">
+          <svg class="back-chevron" xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m15 18-6-6 6-6"/>
+          </svg>
+          <span>Zurück</span>
+        </button>
+
+        <div class="player-heading impostor-heading">
+          <h1 class="player-title">Impostor</h1>
+        </div>
+        <div class="impostor-options" id="impostor-options"></div>
+      </section>
+
+      <section class="screen category-screen" aria-hidden="true" inert>
+        <button class="back-button" id="categories-back" type="button">
+          <svg class="back-chevron" xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+            viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m15 18-6-6 6-6"/>
+          </svg>
+          <span>Zurück</span>
+        </button>
+
+        <div class="player-heading category-heading">
+          <h1 class="player-title">Kategorien</h1>
+          <span class="player-count-badge" id="active-category-count">Keine Kategorien</span>
+        </div>
+        <div class="category-options" id="category-options"></div>
       </section>
       </div>
       </div>

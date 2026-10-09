@@ -3,10 +3,21 @@ const defaultPlayerCount = 4;
 const screenTrack = document.getElementById("screen-track");
 const playersOption = document.getElementById("players-option");
 const playersBack = document.getElementById("players-back");
+const impostorsOption = document.getElementById("impostors-option");
+const impostorsBack = document.getElementById("impostors-back");
+const categoriesOption = document.getElementById("categories-option");
+const categoriesBack = document.getElementById("categories-back");
+const impostorScreen = document.querySelector(".impostor-screen");
+const categoryScreen = document.querySelector(".category-screen");
 const playerList = document.getElementById("player-list");
 const playerListScroll = document.getElementById("player-list-scroll");
 const activePlayerCount = document.getElementById("active-player-count");
 const playerCountValue = document.getElementById("player-count-value");
+const impostorCountValue = document.getElementById("impostor-count-value");
+const impostorOptions = document.getElementById("impostor-options");
+const categoryOptions = document.getElementById("category-options");
+const categoryCountValue = document.getElementById("category-count-value");
+const activeCategoryCount = document.getElementById("active-category-count");
 const addPlayerForm = document.getElementById("add-player-form");
 const newPlayerName = document.getElementById("new-player-name");
 const deletePlayerButton = document.getElementById("delete-player-button");
@@ -16,6 +27,11 @@ const homeScreen = document.querySelector(".home-screen");
 const playerFormMessage = document.getElementById("player-form-message");
 const minPlayerCount = 3;
 const maxPlayerCount = 20;
+const impostorCountKey = "impostor-count";
+const randomImpostorCountKey = "random-impostor-count";
+const impostorOptionCount = 6;
+const selectedCategoryIds = new Set();
+let categories = [];
 
 function getStoredPlayerNames() {
   let storedNames;
@@ -49,6 +65,9 @@ function getStoredPlayerNames() {
 }
 
 let playerNames = getStoredPlayerNames();
+let impostorCount = getStoredImpostorCount();
+let randomImpostorCount = getStoredRandomImpostorCount();
+let randomSwitchAnimation = null;
 let selectedPlayerIndex = null;
 let draggedItem = null;
 let dragPlaceholder = null;
@@ -64,6 +83,218 @@ let dragPointerY = 0;
 let dragDirection = 1;
 let dragAutoScrollFrame = null;
 let dragMoved = false;
+
+function getMaximumImpostorCount() {
+  return Math.max(1, Math.floor(playerNames.length / 2 - 1));
+}
+
+function getStoredImpostorCount() {
+  let storedValue;
+  try {
+    storedValue = localStorage.getItem(impostorCountKey);
+  } catch (error) {
+    console.error("Impostor-Anzahl konnte nicht geladen werden.", error);
+    return 1;
+  }
+
+  const storedCount = Number.parseInt(storedValue, 10);
+  const maximumCount = Math.max(1, Math.floor(playerNames.length / 2 - 1));
+  if (!Number.isInteger(storedCount) || storedCount < 1) {
+    return 1;
+  }
+
+  const normalizedCount = Math.min(storedCount, maximumCount);
+  if (normalizedCount !== storedCount) {
+    try {
+      localStorage.setItem(impostorCountKey, String(normalizedCount));
+    } catch (error) {
+      console.error("Impostor-Anzahl konnte nicht gespeichert werden.", error);
+    }
+  }
+  return normalizedCount;
+}
+
+function getStoredRandomImpostorCount() {
+  try {
+    return localStorage.getItem(randomImpostorCountKey) === "true";
+  } catch (error) {
+    console.error("Zufällige Impostor-Anzahl konnte nicht geladen werden.", error);
+    return false;
+  }
+}
+
+function saveImpostorCount() {
+  try {
+    localStorage.setItem(impostorCountKey, String(impostorCount));
+  } catch (error) {
+    console.error("Impostor-Anzahl konnte nicht gespeichert werden.", error);
+  }
+}
+
+function saveRandomImpostorCount() {
+  try {
+    localStorage.setItem(randomImpostorCountKey, String(randomImpostorCount));
+  } catch (error) {
+    console.error("Zufällige Impostor-Anzahl konnte nicht gespeichert werden.", error);
+  }
+}
+
+function updateCategoryCount() {
+    const count = selectedCategoryIds.size;
+    const label = count === 0
+      ? "Keine Kategorien"
+      : `${count} ${count === 1 ? "Kategorie" : "Kategorien"}`;
+    categoryCountValue.textContent = label;
+    activeCategoryCount.textContent = label;
+  }
+
+function renderCategories() {
+    categoryOptions.innerHTML = "";
+    categories.forEach((category, index) => {
+      const option = document.createElement("button");
+      option.type = "button";
+      option.className = "option category-option";
+      if (index === 0) {
+        option.classList.add("impostor-option-first");
+      }
+      if (categories.length === 1) {
+        option.classList.add("category-option-single");
+      }
+      const isSelected = selectedCategoryIds.has(category.id);
+      option.classList.toggle("is-selected", isSelected);
+      option.setAttribute("aria-pressed", String(isSelected));
+      option.innerHTML = `
+        <span class="category-icon" aria-hidden="true"></span>
+        <span class="category-details">
+          <span class="category-name">${category.name}</span>
+          ${category.description ? `<span class="category-description">${category.description}</span>` : ""}
+        </span>
+        ${isSelected ? `
+          <svg class="impostor-option-check" xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+            viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            aria-hidden="true">
+            <path d="M20 6 9 17l-5-5"/>
+          </svg>
+        ` : ""}
+      `;
+      option.addEventListener("click", () => {
+        if (selectedCategoryIds.has(category.id)) {
+          selectedCategoryIds.delete(category.id);
+        } else {
+          selectedCategoryIds.add(category.id);
+        }
+        updateCategoryCount();
+        renderCategories();
+      });
+      categoryOptions.append(option);
+    });
+  }
+
+async function loadCategories() {
+    try {
+      const response = await fetch("data/categories.json");
+      if (!response.ok) {
+        throw new Error(`Kategorien konnten nicht geladen werden (${response.status}).`);
+      }
+      const data = await response.json();
+      if (!data || !Array.isArray(data.categories)) {
+        throw new Error("Die Kategorien-Datei hat ein ungültiges Format.");
+      }
+      categories = data.categories;
+      renderCategories();
+    } catch (error) {
+      console.error("Kategorien konnten nicht geladen werden.", error);
+  }
+}
+
+function renderImpostorOptions() {
+  const maximumCount = getMaximumImpostorCount();
+  if (!randomImpostorCount && impostorCount > maximumCount) {
+    impostorCount = maximumCount;
+    saveImpostorCount();
+  }
+
+  impostorCountValue.textContent = randomImpostorCount ? "Zufällig" : impostorCount;
+  impostorOptions.innerHTML = "";
+
+  const randomOption = document.createElement("div");
+  randomOption.className = "option impostor-random-option";
+  randomOption.innerHTML = `
+    <span class="option-name">Zufällige Anzahl</span>
+    <label class="option-switch">
+      <input class="switch-input" type="checkbox"
+        aria-label="Zufällige Impostor-Anzahl aktivieren"
+        ${randomImpostorCount ? "checked" : ""}>
+      <span class="switch-thumb"></span>
+    </label>
+  `;
+  randomOption.querySelector(".switch-input").addEventListener("change", event => {
+    randomImpostorCount = event.target.checked;
+    randomSwitchAnimation = randomImpostorCount ? "on" : "off";
+    saveRandomImpostorCount();
+    if (!randomImpostorCount && impostorCount > getMaximumImpostorCount()) {
+      impostorCount = getMaximumImpostorCount();
+      saveImpostorCount();
+    }
+    renderImpostorOptions();
+  });
+  impostorOptions.append(randomOption);
+  if (randomSwitchAnimation) {
+    randomOption.querySelector(".option-switch").classList.add(
+      `is-switching-${randomSwitchAnimation}`
+    );
+    randomOption.querySelector(".switch-thumb").classList.add(
+      `is-switching-${randomSwitchAnimation}`
+    );
+    randomSwitchAnimation = null;
+  }
+
+  const optionCount = randomImpostorCount ? playerNames.length : impostorOptionCount;
+  for (let count = 1; count <= optionCount; count += 1) {
+    const option = document.createElement("button");
+    option.type = "button";
+    option.className = "option impostor-option";
+    if (count === 1) {
+      option.classList.add("impostor-option-first");
+    }
+    option.disabled = !randomImpostorCount && count > maximumCount;
+    const isSelected = count === impostorCount;
+    option.classList.toggle("is-selected", isSelected);
+    option.setAttribute("aria-pressed", String(isSelected));
+    option.innerHTML = `
+      <span class="option-name">${randomImpostorCount ? `Bis zu ${count} Impostor` : `${count} Impostor`}</span>
+      ${isSelected ? `
+        <svg class="impostor-option-check" xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+          viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+          aria-hidden="true">
+          <path d="M20 6 9 17l-5-5"/>
+        </svg>
+      ` : ""}
+    `;
+
+    option.addEventListener("click", () => {
+      if (option.disabled) {
+        return;
+      }
+
+      impostorCount = count;
+      saveImpostorCount();
+      if (!randomImpostorCount) {
+        saveRandomImpostorCount();
+      }
+      renderImpostorOptions();
+    });
+
+    if (count > 1) {
+      const divider = document.createElement("div");
+      divider.className = "option-divider";
+      impostorOptions.append(divider);
+    }
+    impostorOptions.append(option);
+  }
+}
 
 function setAddPlayerButtonState(isEditing, animate = false) {
   addPlayerButton.setAttribute(
@@ -176,6 +407,7 @@ function renderPlayers(animateAddIcon = false, animateDeleteButton = false) {
   playerList.innerHTML = "";
   playerCountValue.textContent = playerNames.length;
   activePlayerCount.textContent = `${playerNames.length}/${maxPlayerCount}`;
+  renderImpostorOptions();
   clearPlayerSelection(animateAddIcon, animateDeleteButton);
   updatePlayerFormState();
 
@@ -419,6 +651,15 @@ playerListScroll.addEventListener("scroll", () => {
   }, 700);
 });
 
+let impostorScrollIndicatorTimeout = null;
+impostorOptions.addEventListener("scroll", () => {
+  impostorOptions.classList.add("is-scrolling");
+  clearTimeout(impostorScrollIndicatorTimeout);
+  impostorScrollIndicatorTimeout = setTimeout(() => {
+    impostorOptions.classList.remove("is-scrolling");
+  }, 700);
+});
+
 document.addEventListener("pointerup", () => {
   if (!draggedItem) {
     return;
@@ -502,18 +743,30 @@ document.addEventListener("pointercancel", () => {
   dragMoved = false;
 });
 
-function switchToPlayerScreen(showPlayerScreen) {
-  screenTrack.classList.toggle("show-player-screen", !showPlayerScreen);
+function switchToScreen(screenName) {
+  screenTrack.classList.remove(
+    "show-player-screen",
+    "show-impostor-screen",
+    "show-category-screen"
+  );
   void screenTrack.offsetWidth;
 
   requestAnimationFrame(() => {
-    screenTrack.classList.toggle("show-player-screen", showPlayerScreen);
+    if (screenName !== "home") {
+      screenTrack.classList.add("show-player-screen");
+      if (screenName === "impostor") {
+        screenTrack.classList.add("show-impostor-screen");
+      }
+      if (screenName === "categories") {
+        screenTrack.classList.add("show-category-screen");
+      }
+    }
   });
 }
 
 playersOption.addEventListener("click", event => {
   event.preventDefault();
-  switchToPlayerScreen(true);
+  switchToScreen("player");
   homeScreen.setAttribute("aria-hidden", "true");
   homeScreen.inert = true;
   playerScreen.removeAttribute("inert");
@@ -527,7 +780,7 @@ playersOption.addEventListener("click", event => {
 
 playersBack.addEventListener("click", event => {
   event.preventDefault();
-  switchToPlayerScreen(false);
+  switchToScreen("home");
   homeScreen.setAttribute("aria-hidden", "false");
   homeScreen.inert = false;
   playerScreen.setAttribute("aria-hidden", "true");
@@ -535,6 +788,62 @@ playersBack.addEventListener("click", event => {
   screenTrack.addEventListener(
     "transitionend",
     () => playersOption.focus({ preventScroll: true }),
+    { once: true }
+  );
+});
+
+impostorsOption.addEventListener("click", event => {
+  event.preventDefault();
+  switchToScreen("impostor");
+  homeScreen.setAttribute("aria-hidden", "true");
+  homeScreen.inert = true;
+  impostorScreen.removeAttribute("inert");
+  impostorScreen.setAttribute("aria-hidden", "false");
+  screenTrack.addEventListener(
+    "transitionend",
+    () => impostorsBack.focus({ preventScroll: true }),
+    { once: true }
+  );
+});
+
+impostorsBack.addEventListener("click", event => {
+  event.preventDefault();
+  switchToScreen("home");
+  homeScreen.setAttribute("aria-hidden", "false");
+  homeScreen.inert = false;
+  impostorScreen.setAttribute("aria-hidden", "true");
+  impostorScreen.inert = true;
+  screenTrack.addEventListener(
+    "transitionend",
+    () => impostorsOption.focus({ preventScroll: true }),
+    { once: true }
+  );
+});
+
+categoriesOption.addEventListener("click", event => {
+  event.preventDefault();
+  switchToScreen("categories");
+  homeScreen.setAttribute("aria-hidden", "true");
+  homeScreen.inert = true;
+  categoryScreen.removeAttribute("inert");
+  categoryScreen.setAttribute("aria-hidden", "false");
+  screenTrack.addEventListener(
+    "transitionend",
+    () => categoriesBack.focus({ preventScroll: true }),
+    { once: true }
+  );
+});
+
+categoriesBack.addEventListener("click", event => {
+  event.preventDefault();
+  switchToScreen("home");
+  homeScreen.setAttribute("aria-hidden", "false");
+  homeScreen.inert = false;
+  categoryScreen.setAttribute("aria-hidden", "true");
+  categoryScreen.inert = true;
+  screenTrack.addEventListener(
+    "transitionend",
+    () => categoriesOption.focus({ preventScroll: true }),
     { once: true }
   );
 });
@@ -613,3 +922,5 @@ newPlayerName.placeholder = "Neuer Spieler";
 homeScreen.inert = false;
 playerScreen.inert = true;
 renderPlayers();
+updateCategoryCount();
+loadCategories();

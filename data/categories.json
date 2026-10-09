@@ -1,0 +1,16 @@
+{
+  "categories": [
+    {
+      "id": "tiere",
+      "name": "Tiere",
+      "description": "Tiere aus aller Welt",
+      "words": [
+        {
+          "id": "loewe",
+          "word": "Löwe",
+          "tip": "Savanne"
+        }
+      ]
+    }
+  ]
+}

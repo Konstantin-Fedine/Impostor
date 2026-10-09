@@ -69,6 +69,16 @@
   background-color: var(--surface-option-hover);
 }
 
+.option:disabled {
+  color: var(--text-muted);
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.option:disabled:hover {
+  background-color: transparent;
+}
+
 .option-name {
   flex: 1;
 }
@@ -121,6 +131,66 @@
 
 .option-switch:has(.switch-input:checked) {
   background: var(--text);
+}
+
+.option-switch.is-switching-on {
+  animation: switch-background-on 180ms ease;
+}
+
+.option-switch.is-switching-off {
+  animation: switch-background-off 180ms ease;
+}
+
+.switch-thumb.is-switching-on {
+  animation: switch-thumb-on 180ms ease;
+}
+
+.switch-thumb.is-switching-off {
+  animation: switch-thumb-off 180ms ease;
+}
+
+@keyframes switch-background-on {
+  from {
+    background: var(--border);
+  }
+
+  to {
+    background: var(--text);
+  }
+}
+
+@keyframes switch-background-off {
+  from {
+    background: var(--text);
+  }
+
+  to {
+    background: var(--border);
+  }
+}
+
+@keyframes switch-thumb-on {
+  from {
+    background: var(--text-muted);
+    transform: translateX(0);
+  }
+
+  to {
+    background: var(--bg);
+    transform: translateX(20px);
+  }
+}
+
+@keyframes switch-thumb-off {
+  from {
+    background: var(--bg);
+    transform: translateX(20px);
+  }
+
+  to {
+    background: var(--text-muted);
+    transform: translateX(0);
+  }
 }
 
 .option-switch:focus {
@@ -209,6 +279,13 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .option-switch.is-switching-on,
+  .option-switch.is-switching-off,
+  .switch-thumb.is-switching-on,
+  .switch-thumb.is-switching-off {
+    animation-duration: 1ms;
+  }
+
   .add-player-button svg {
     animation-duration: 1ms;
   }
@@ -312,6 +389,20 @@
   transform: translate3d(-50%, 0, 0);
 }
 
+.screen-track.show-player-screen:not(.show-impostor-screen) .impostor-screen,
+.screen-track.show-impostor-screen .player-screen,
+.screen-track.show-category-screen .player-screen,
+.screen-track.show-category-screen .impostor-screen,
+.screen-track.show-impostor-screen .category-screen {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.screen-track.show-player-screen:not(.show-category-screen) .category-screen {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .screen {
   flex: 0 0 50%;
   width: 50%;
@@ -326,7 +417,9 @@
   padding: var(--space-2xl);
 }
 
-.player-screen {
+.player-screen,
+.impostor-screen,
+.category-screen {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -335,6 +428,151 @@
   box-sizing: border-box;
   padding: var(--space-2xl);
   background: var(--surface);
+}
+
+.impostor-screen {
+  position: absolute;
+  top: 0;
+  left: 50%;
+}
+
+.category-screen {
+  position: absolute;
+  top: 0;
+  left: 50%;
+}
+
+.impostor-options {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 180ms ease;
+}
+
+.category-options {
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.category-option {
+  gap: var(--space-md);
+  color: var(--text-muted);
+}
+
+.category-option.category-option-single {
+  border-radius: var(--radius-md);
+}
+
+.category-icon {
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-md);
+  background: var(--border);
+}
+
+.category-details {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.category-name,
+.category-description {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.category-name {
+  color: inherit;
+}
+
+.category-description {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.category-option.is-selected {
+  color: var(--text);
+  background: var(--surface-option-hover);
+}
+
+.category-option.is-selected:hover {
+  background: var(--surface-option-hover);
+}
+
+.impostor-options.is-scrolling {
+  scrollbar-color: var(--border) transparent;
+}
+
+.impostor-options::-webkit-scrollbar,
+.player-list-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.impostor-options::-webkit-scrollbar-track,
+.player-list-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.impostor-options::-webkit-scrollbar-thumb,
+.player-list-scroll::-webkit-scrollbar-thumb {
+  border-radius: var(--radius-full);
+  background: transparent;
+  transition: background-color 180ms ease;
+}
+
+.impostor-options.is-scrolling::-webkit-scrollbar-thumb,
+.player-list-scroll.is-scrolling::-webkit-scrollbar-thumb {
+  background: var(--border);
+}
+
+.impostor-options::-webkit-scrollbar-button,
+.player-list-scroll::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.option.impostor-random-option {
+  margin-bottom: var(--space-lg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: transparent;
+}
+
+.impostor-random-option .option-switch {
+  flex: 0 0 auto;
+}
+
+.impostor-option {
+  color: var(--text-muted);
+}
+
+.impostor-option-first {
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+.impostor-option.is-selected {
+  color: var(--text);
+  background: var(--surface-option-hover);
+}
+
+.impostor-option.is-selected:hover {
+  background: var(--surface-option-hover);
+}
+
+.impostor-option-check {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  color: var(--text);
 }
 
 .back-button {
@@ -380,6 +618,16 @@
   margin: var(--space-xl) 0 var(--space-lg);
 }
 
+.category-heading {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.category-heading .player-count-badge {
+  margin-left: 0;
+}
+
 .player-count-badge {
   display: inline-flex;
   align-items: center;
@@ -408,24 +656,6 @@
 
 .player-list-scroll.is-scrolling {
   scrollbar-color: var(--border) transparent;
-}
-
-.player-list-scroll::-webkit-scrollbar {
-  width: 6px;
-}
-
-.player-list-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.player-list-scroll::-webkit-scrollbar-thumb {
-  border-radius: var(--radius-full);
-  background: transparent;
-  transition: background-color 180ms ease;
-}
-
-.player-list-scroll.is-scrolling::-webkit-scrollbar-thumb {
-  background: var(--border);
 }
 
 .player-list {
@@ -707,10 +937,20 @@ html.is-dragging-player body {
     width: 100vw;
   }
 
-  .player-screen {
+  .player-screen,
+  .impostor-screen,
+  .category-screen {
     box-sizing: border-box;
     min-height: 100%;
     padding: clamp(var(--space-xl), 5vw, var(--space-2xl));
+  }
+
+  .impostor-screen {
+    left: 100vw;
+  }
+
+  .category-screen {
+    left: 100vw;
   }
 
   .player-heading {
