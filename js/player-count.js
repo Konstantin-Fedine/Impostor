@@ -654,6 +654,7 @@ function beginRoundFinish() {
 
 function prepareRoundFinishTransition() {
   round.phase = "starting";
+  dealingPhase.hidden = true;
   finishPhase.hidden = false;
   finishPhase.classList.add("is-entering");
   startPlayerAnnouncement.textContent = `${round.starter} fängt an`;

@@ -477,6 +477,11 @@
   gap: var(--space-lg);
 }
 
+#dealing-phase {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
 .round-player-heading {
   display: flex;
   flex: 0 0 auto;
@@ -493,14 +498,13 @@
 }
 
 .game-card-stage {
-  position: absolute;
-  top: 50%;
-  left: 50%;
+  position: relative;
   width: min(calc(100% - var(--space-4xl)), 340px);
   height: clamp(160px, 48vh, 400px);
+  max-height: 100%;
   min-height: 0;
-  flex: none;
-  transform: translate(-50%, -50%);
+  justify-self: center;
+  align-self: center;
   perspective: 1000px;
 }
 
@@ -685,7 +689,7 @@
 }
 
 .game-pass-button {
-  margin-top: auto;
+  justify-self: center;
   visibility: hidden;
   opacity: 0;
   transform: translateY(8px);
@@ -714,10 +718,19 @@
 
 .round-finish-phase {
   position: absolute;
-  inset: 0;
+  top: calc(clamp(var(--space-xl), 5vw, var(--space-2xl)) + 36px);
+  right: 0;
+  bottom: max(
+    clamp(var(--space-xl), 5vw, var(--space-2xl)),
+    env(safe-area-inset-bottom)
+  );
+  left: 0;
+  display: flex;
+  flex-direction: column;
   z-index: 3;
   align-items: center;
   justify-content: center;
+  gap: var(--space-xl);
 }
 
 .round-finish-phase.is-entering {
@@ -725,13 +738,16 @@
 }
 
 .start-player-announcement {
-  position: absolute;
-  top: calc(50% - 96px);
-  right: var(--space-lg);
-  left: var(--space-lg);
+  position: relative;
+  width: calc(100% - var(--space-2xl));
+  max-height: calc(100% - 56px - var(--space-xl));
+  flex: 0 1 auto;
   margin: 0;
+  overflow-y: auto;
   font-size: clamp(24px, 6vw, 36px);
   font-weight: 600;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
   text-align: center;
 }
 
@@ -740,12 +756,10 @@
 }
 
 .round-finish-phase .reveal-impostors-button {
-  position: absolute;
-  top: 50%;
-  left: 50%;
+  position: relative;
   width: min(100%, 220px);
+  flex: 0 0 auto;
   margin: 0;
-  transform: translate(-50%, -50%);
   background-color: var(--text);
   opacity: 1;
   cursor: pointer;
@@ -833,7 +847,8 @@
   display: none;
 }
 
-.round-phase[hidden],
+#dealing-phase[hidden],
+#finish-phase[hidden],
 .reveal-impostors-button[hidden],
 .round-results[hidden] {
   display: none;
