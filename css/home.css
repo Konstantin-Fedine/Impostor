@@ -229,6 +229,15 @@
   background-color: var(--text-muted);
 }
 
+.play-button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.play-button:disabled:hover {
+  background-color: var(--text);
+}
+
 .add-player-button:active {
   transform: scale(0.92);
 }
@@ -385,7 +394,8 @@
   will-change: transform;
 }
 
-.screen-track.show-player-screen {
+.screen-track.show-player-screen,
+.screen-track.show-game-screen {
   transform: translate3d(-50%, 0, 0);
 }
 
@@ -393,12 +403,20 @@
 .screen-track.show-impostor-screen .player-screen,
 .screen-track.show-category-screen .player-screen,
 .screen-track.show-category-screen .impostor-screen,
-.screen-track.show-impostor-screen .category-screen {
+.screen-track.show-impostor-screen .category-screen,
+.screen-track.show-game-screen .player-screen,
+.screen-track.show-game-screen .impostor-screen,
+.screen-track.show-game-screen .category-screen {
   visibility: hidden;
   pointer-events: none;
 }
 
 .screen-track.show-player-screen:not(.show-category-screen) .category-screen {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.screen-track.show-player-screen:not(.show-game-screen) .game-screen {
   visibility: hidden;
   pointer-events: none;
 }
@@ -419,7 +437,8 @@
 
 .player-screen,
 .impostor-screen,
-.category-screen {
+.category-screen,
+.game-screen {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -440,6 +459,384 @@
   position: absolute;
   top: 0;
   left: 50%;
+}
+
+.game-screen {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  gap: var(--space-lg);
+}
+
+.round-phase {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-lg);
+}
+
+.round-player-heading {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-top: var(--space-md);
+}
+
+.round-player-progress {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.game-card-stage {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(calc(100% - var(--space-4xl)), 340px);
+  height: clamp(160px, 48vh, 400px);
+  min-height: 0;
+  flex: none;
+  transform: translate(-50%, -50%);
+  perspective: 1000px;
+}
+
+.deal-card {
+  display: block;
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  border-radius: var(--radius-xl);
+  text-align: center;
+  touch-action: none;
+  user-select: none;
+  transform: translate3d(0, 0, 0);
+  transition: transform 460ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.deal-card[aria-hidden="true"] {
+  visibility: hidden;
+}
+
+.deal-card.is-current {
+  z-index: 1;
+}
+
+.deal-card.is-next {
+  z-index: 0;
+  transform: translate3d(112%, 0, 0);
+}
+
+.deal-card.is-leaving {
+  transform: translate3d(-112%, 0, 0);
+}
+
+.deal-card.is-arriving {
+  z-index: 2;
+  transform: translate3d(0, 0, 0);
+}
+
+.deal-card.is-round-restarting {
+  animation: deal-card-restart-enter 460ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.deal-card.is-leaving {
+  z-index: 1;
+}
+
+@keyframes deal-card-restart-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(112%, 0, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.deal-card.is-dragging {
+  transition: none;
+}
+
+.deal-card.is-resetting {
+  transition: none !important;
+}
+
+.deal-card:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 4px;
+}
+
+.deal-card-secret,
+.deal-card-cover {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.deal-card-secret {
+  display: block;
+  z-index: 1;
+  background: #000;
+  color: #fff;
+}
+
+.deal-card-cover {
+  z-index: 2;
+  justify-content: space-between;
+  padding: clamp(var(--space-lg), 5vw, var(--space-3xl));
+  border: 1px solid var(--border);
+  background: var(--surface-hover);
+  transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.deal-card.is-dragging .deal-card-cover,
+.deal-card.is-resetting .deal-card-cover {
+  transition: none;
+}
+
+.deal-card-player {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--text);
+  font-size: clamp(24px, 6vw, 34px);
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.deal-card-secret {
+  min-height: 0;
+}
+
+.deal-card-content {
+  position: absolute;
+  top: 66.667%;
+  right: clamp(var(--space-lg), 5vw, var(--space-3xl));
+  left: clamp(var(--space-lg), 5vw, var(--space-3xl));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+  transform: translateY(-50%);
+  text-align: center;
+  transition: opacity 140ms ease;
+}
+
+.deal-card-secret.is-impostor {
+  color: #fff;
+}
+
+.deal-card-role {
+  margin: 0;
+  font-size: clamp(28px, 8vw, 46px);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.deal-card-word {
+  max-width: 100%;
+  margin: 0;
+  font-size: clamp(28px, 8vw, 48px);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.deal-card-tip {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: clamp(16px, 4vw, 20px);
+}
+
+.deal-card-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  color: var(--text-muted);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.deal-card-prompt svg {
+  width: 40px;
+  height: 40px;
+}
+
+.game-pass-button,
+.reveal-impostors-button {
+  width: 50%;
+  min-height: 56px;
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.game-pass-button {
+  margin-top: auto;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition:
+    opacity 220ms ease,
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 220ms;
+}
+
+.game-pass-button:hover {
+  background-color: var(--text);
+}
+
+.play-button.game-pass-button:not(.is-visible) {
+  opacity: 0;
+}
+
+.game-pass-button.is-visible {
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+  transition-delay: 0s;
+}
+
+.round-finish-phase {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  align-items: center;
+  justify-content: center;
+}
+
+.round-finish-phase.is-entering {
+  animation: round-finish-phase-slide-in 460ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.start-player-announcement {
+  position: absolute;
+  top: calc(50% - 96px);
+  right: var(--space-lg);
+  left: var(--space-lg);
+  margin: 0;
+  font-size: clamp(24px, 6vw, 36px);
+  font-weight: 600;
+  text-align: center;
+}
+
+.start-player-announcement.is-fading {
+  animation: start-player-announcement-fade 5s ease forwards;
+}
+
+.round-finish-phase .reveal-impostors-button {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(100%, 220px);
+  margin: 0;
+  transform: translate(-50%, -50%);
+  background-color: var(--text);
+  opacity: 1;
+  cursor: pointer;
+  transition:
+    width 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color var(--transition),
+    transform var(--transition);
+}
+
+.round-finish-phase .reveal-impostors-button.is-restart {
+  width: min(100%, 160px);
+}
+
+.round-finish-phase .reveal-impostors-button:hover,
+.round-finish-phase .reveal-impostors-button:disabled {
+  background-color: var(--text);
+  opacity: 1;
+}
+
+.game-screen > .back-button {
+  position: relative;
+  z-index: 4;
+}
+
+@keyframes start-player-announcement-fade {
+  0% {
+    opacity: 0;
+  }
+
+  8%,
+  88% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes round-finish-phase-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.round-results {
+  width: 100%;
+  text-align: center;
+}
+
+.round-results h2 {
+  margin: 0 0 var(--space-lg);
+  font-size: clamp(30px, 8vw, 48px);
+}
+
+.impostor-results-list {
+  display: grid;
+  gap: var(--space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.impostor-results-list li {
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  background: var(--surface-option-hover);
+  font-size: 20px;
+}
+
+.game-start-message {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  text-align: center;
+}
+
+.game-start-message:empty {
+  display: none;
+}
+
+.round-phase[hidden],
+.reveal-impostors-button[hidden],
+.round-results[hidden] {
+  display: none;
 }
 
 .impostor-options {
@@ -789,6 +1186,22 @@ html.is-dragging-player body {
     animation-duration: 1ms;
   }
 
+  .deal-card,
+  .deal-card-cover,
+  .deal-card-secret,
+  .game-pass-button {
+    transition-duration: 1ms;
+  }
+
+  .deal-card.is-round-restarting {
+    animation-duration: 1ms;
+  }
+
+  .start-player-announcement.is-fading,
+  .round-finish-phase.is-entering {
+    animation: none;
+  }
+
   .back-button:hover,
   .back-button:active,
   .delete-player-button:hover,
@@ -939,7 +1352,8 @@ html.is-dragging-player body {
 
   .player-screen,
   .impostor-screen,
-  .category-screen {
+  .category-screen,
+  .game-screen {
     box-sizing: border-box;
     min-height: 100%;
     padding: clamp(var(--space-xl), 5vw, var(--space-2xl));
@@ -951,6 +1365,14 @@ html.is-dragging-player body {
 
   .category-screen {
     left: 100vw;
+  }
+
+  .game-screen {
+    left: 100vw;
+    padding-bottom: max(
+      clamp(var(--space-xl), 5vw, var(--space-2xl)),
+      env(safe-area-inset-bottom)
+    );
   }
 
   .player-heading {

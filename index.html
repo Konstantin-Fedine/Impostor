@@ -54,7 +54,7 @@
           <div class="option">
             <span class="option-name">Hinweise für den Impostor</span>
             <label class="option-switch">
-              <input class="switch-input" type="checkbox" aria-label="Hinweise für den Impostor aktivieren">
+              <input class="switch-input" id="impostor-hints-option" type="checkbox" aria-label="Hinweise für den Impostor aktivieren">
               <span class="switch-thumb"></span>
             </label>
           </div>
@@ -72,7 +72,8 @@
           </button>
         </div>
 
-        <button class="play-button" type="button">Spiel starten</button>
+        <p class="game-start-message" id="game-start-message" role="status" aria-live="polite"></p>
+        <button class="play-button" id="start-game-button" type="button">Spiel starten</button>
       </section>
 
       <section class="screen player-screen" aria-hidden="true" inert>
@@ -152,6 +153,70 @@
           <span class="player-count-badge" id="active-category-count">Keine Kategorien</span>
         </div>
         <div class="category-options" id="category-options"></div>
+      </section>
+
+      <section class="screen game-screen" aria-hidden="true" inert>
+        <button class="back-button" id="game-back" type="button">
+          <svg class="back-chevron" xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+            viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m15 18-6-6 6-6"/>
+          </svg>
+          <span>Zurück</span>
+        </button>
+
+        <div class="round-phase" id="dealing-phase">
+          <div class="round-player-heading">
+            <span class="round-player-progress" id="round-player-progress"></span>
+          </div>
+          <div class="game-card-stage" id="game-card-stage">
+            <div class="deal-card is-current" data-role-card role="button" tabindex="0"
+              aria-describedby="card-reveal-instruction" aria-label="Geheime Karte verdeckt">
+              <div class="deal-card-secret" data-card-secret></div>
+              <div class="deal-card-cover" data-card-cover>
+                <span class="deal-card-player" data-card-player></span>
+                <div class="deal-card-prompt" id="card-reveal-instruction">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"
+                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    aria-hidden="true">
+                    <path d="m5 12 7-7 7 7"/>
+                    <path d="M12 19V5"/>
+                  </svg>
+                  <span>Karte aufdecken</span>
+                </div>
+              </div>
+            </div>
+            <div class="deal-card is-next" data-role-card aria-hidden="true">
+              <div class="deal-card-secret" data-card-secret></div>
+              <div class="deal-card-cover" data-card-cover>
+                <span class="deal-card-player" data-card-player></span>
+                <div class="deal-card-prompt">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"
+                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    aria-hidden="true">
+                    <path d="m5 12 7-7 7 7"/>
+                    <path d="M12 19V5"/>
+                  </svg>
+                  <span>Karte aufdecken</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button class="play-button game-pass-button" id="pass-device-button" type="button" aria-hidden="true" tabindex="-1">Weitergeben</button>
+        </div>
+
+        <div class="round-phase round-finish-phase" id="finish-phase" hidden>
+          <p class="start-player-announcement" id="start-player-announcement" role="status" aria-live="polite"></p>
+          <button class="play-button reveal-impostors-button" id="reveal-impostors-button" type="button" hidden>
+            Imposter aufdecken
+          </button>
+          <div class="round-results" id="round-results" hidden>
+            <h2>Imposter</h2>
+            <ul class="impostor-results-list" id="impostor-results-list"></ul>
+          </div>
+        </div>
       </section>
       </div>
       </div>
